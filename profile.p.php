@@ -29,7 +29,7 @@ if (!$w->rowCount()) {
 if(Config::isAdmin(Config::getUser())) {
 	if(isset($_POST['unban'])) {
 		$w = Config::$g_con->prepare('DELETE FROM `bans` WHERE `account` = ?');
-		$w->execute(array($profile->username));
+		$w->execute(array($profile->id));
 		$notif = 'You\'ve been unbanned by '.Config::getData("accounts","username",Config::getUser()).'!';
 		$link = Config::$_PAGE_URL.'profile/' . $profile->username;
 		Config::makeNotification($profile->id,$profile->username,$notif,Config::getUser(),Config::getData("accounts","username",Config::getUser()),$link);
@@ -181,19 +181,19 @@ if(Config::isAdmin(Config::getUser())) {
 		Config::insertLog(Config::getUser(),Config::getData("accounts","username",Config::getUser()),$log,$profile->id,$profile->username);
 		echo Config::csSN("success","Faction history line #".$_POST['delete_ac']." has been deleted!");
 	}
-	if(isset($_POST['mon_submit']) && Config::isAdmin(Config::getUser(), 6))
+	if(isset($_POST['mon_submit']) && Config::isAdmin(Config::getUser(), 5))
 	{
 		$notif = 'Your money state('.Config::formatNumber($_POST['money_n']).' / '.Config::formatNumber($_POST['bank_n']).') has been updated by Admin '.Config::getName(Config::getUser(),false).'.';
 		$link = Config::$_PAGE_URL.'profile/' . $profile->username;
 		Config::makeNotification($profile->id,$profile->username,$notif,Config::getUser(),Config::getData("accounts","username",Config::getUser()),$link);
 		$w = Config::$g_con->prepare('UPDATE `characters` SET `money` = ?, `bankmoney` = ? WHERE `account` = ?');
 		$w->execute(array($_POST['money_n'],$_POST['bank_n'],$profile->id));
-		$profile->Money = $_POST['money_n'];
-		$profile->Bank = $_POST['bank_n'];
+		$character->money = $_POST['money_n'];
+		$character->bankmoney = $_POST['bank_n'];
 		echo Config::csSN("success","Money got updated with succes!");
 		
 	}
-	if(isset($_POST['ppr_submit']) && Config::isAdmin(Config::getUser(), 6))
+	if(isset($_POST['ppr_submit']) && Config::isAdmin(Config::getUser(), 5))
 	{
 		$notif = 'Your premium points('.$_POST['pointsp'].') has been updated by Admin '.Config::getName(Config::getUser(),false).'.';
 		$link = Config::$_PAGE_URL.'profile/' . $profile->username;
@@ -681,10 +681,38 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 <div class="col-md-3">
     <div class="panel" style="min-height: 400px; margin-bottom:5px">
         <div class="panel-body" style="overflow:hidden">
-            <!-- Dynamisch update van de skin afbeelding -->
-            <a href=""><img id="characterSkinImage" src="<?php echo Config::$_PAGE_URL; ?>assets/img/skins/Skin_<?php echo $characters[0]->skin; ?>.png" style="width: 70%; margin-left: 25px"></a>
+          <!-- Profielfoto en skin -->
+<a href="">
+    <img id="profileAvatar" src="<?php echo ($profile->avatar); ?>" 
+        style="width: 70%; margin-left: 25px;">
+</a>
+
+
+    <a href="">
+        <img id="characterSkinImage" src="<?php echo Config::$_PAGE_URL; ?>assets/img/skins/Skin_<?php echo $characters[0]->skin; ?>.png" 
+            style="width: 70%; margin-left: 25px;">
+    </a>
+
+
+<script>
+    // Dynamisch wisselen tussen profielfoto en skin
+    document.addEventListener('DOMContentLoaded', () => {
+        const profileAvatar = document.getElementById('profileAvatar');
+        const characterSkinImage = document.getElementById('characterSkinImage');
+
+        if (characterSkinImage) {
+            characterSkinImage.addEventListener('load', () => {
+                if (profileAvatar) {
+                    profileAvatar.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>
+
+
             <center>
-                <?php echo ($profile->avatar ? '<span class="label label-success label-transparent">ONLINE</span>' : '<span class="label label-danger label-transparent">OFFLINE</span>')?>
+                <?php echo ($profile->online ? '<span class="label label-success label-transparent">ONLINE</span>' : '<span class="label label-danger label-transparent">OFFLINE</span>')?>
                 <h5><?php echo $profile->username; ?></h5><form method="post">
                 <?php
 				$wd = Config::$g_con->prepare('SELECT `ID`,`Color`,`Icon`,`Tag` FROM `wcode_functions` WHERE `UserName` = ?');
@@ -702,14 +730,6 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 				?></form>
 				<tr><td>Joined on <?php echo Config::getData("accounts", "registerdate", $profile->id) ?></td></tr>
 				
-				<tr>
-							<td><strong style="font-weight: 500;">Premium Points</strong></td>
-							<td>
-								<?php echo Config::getData("accounts","credits",$profile->id) ?>
-								<?php if(Config::isLogged(Config::getUser()) && Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-link active" data-toggle="modal" data-target="#premiumed">Modify</button>'; ?>
-							</td>
-						</tr>
-
 				<?php 
 				if($profile->admin) echo '<span class="label label-primary" style="background-color: orange"> <i class="fa fa-shield"></i> Admin</span> ';
 				if($profile->supporter) echo '<span class="label label-primary" style="background-color: #44bb35"> <i class="fa fa-gear"></i> Supporter</span> ';
@@ -718,7 +738,8 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 			
 			<?php if(Config::getUser() != $profile->username) { ?>
 			<hr><a href="<?php echo ''.Config::$_PAGE_URL . 'complaints/create/' . $profile->username ?>"><button type="button" class="btn btn-danger" title="Create"><i class="ti-pencil"></i>Report Player</button></a>
-			<?php } ?>
+			<?php } ?></br></br>
+			<?php if(Config::isLogged(Config::getUser()) && Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-danger" title="Create" data-toggle="modal" data-target="#sanctioneaza"><i class="ti-pencil"></i>Admin Actions</button></a>'; ?>
 			</center>
 		</div>
 	</div>
@@ -741,7 +762,7 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 				<center><form method="post">
 					<?php
 					if(Config::getData("accounts","admin",Config::getUser()) > 0) echo '<button type="button" class="btn btn-link active" data-toggle="modal" data-target="#tagadd"><i class="fa fa-code"> </i>Add TAG</button>';
-					if(Config::getData("accounts","admin",Config::getUser()) > 0 && Config::getData("accounts","admin",$profile->id) <= 6) {
+					if(Config::getData("accounts","admin",Config::getUser()) > 0 && Config::getData("accounts","admin",$profile->id) <= 5) {
 						$ban = Config::$g_con->prepare('SELECT * FROM `bans` WHERE `account` = ?');
 						$ban->execute(array($profile->id));
 						if(!$ban->rowCount())
@@ -772,8 +793,8 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 		$ba = $ban->fetch(PDO::FETCH_OBJ);
 	?>
 	<div class="alert alert-danger alert-dismissible" role="alert">
-		<i class="fa fa-times-circle"></i> This account has been banned <?php echo ($ba->Days ? 'temporary' : '<b>permanent</b>'); ?> by Admin <?php echo Config::formatName($ba->AdminName) ?> for <?php echo $purifier->purify(Config::xss(Config::clean($ba->Reason))) ?>. (<?php echo $ba->BanTimeDate ?>) 
-		<?php if(Config::isLogged() && $ba->PlayerName == Config::getNameFromID(Config::getUser())) { ?>
+		<i class="fa fa-times-circle"></i> This account has been banned <?php echo ($ba->until ? 'temporary' : '<b>permanent</b>'); ?> by Admin <?php echo Config::formatName($ba->AdminName) ?> for <?php echo $purifier->purify(Config::xss(Config::clean($ba->Reason))) ?>. (<?php echo $ba->BanTimeDate ?>) 
+		<?php if(Config::isLogged() && $ba->username == Config::getNameFromID(Config::getUser())) { ?>
 			<a href="<?php echo Config::$_PAGE_URL ?>unban/create"><span class="label label-default label-transparent"><i class="fa fa-mail-forward"></i> UNBAN REQ</span></a>
 		<?php } ?>
 	</div>
@@ -784,12 +805,13 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 
 
 <div class="col-md-9">
+<div class="tab-content" style="background-color: #41555e">
     <ul class="nav nav-tabs" id="characterTabs" role="tablist">
         <?php
         // Haal alle karakernamen op die bij het account horen
         $account = Config::getUser(); // Haalt het huidige account op
         $query = Config::$g_con->prepare('SELECT * FROM `characters` WHERE `account` = ?');
-        $query->execute(array($account));
+        $query->execute(array($profile->id));
         $characters = $query->fetchAll(PDO::FETCH_OBJ);
 
         // Genereer de tabs voor elk karakter
@@ -852,18 +874,40 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 								
                                 <tr><td><strong style="font-weight: 500;">Character made on </strong></td><td><?php echo Config::getData("characters", "creationdate", $character->id) ?></td></tr>
 								<tr><td><strong style="font-weight: 500;">Last known area </strong></td><td><?php echo Config::getData("characters", "lastarea", $character->id) ?></td></tr>
-								<tr>
-                                    <td><strong style="font-weight: 500;">Finance</strong></td>
-                                    <td>
-								Cash <?php echo Config::formatNumber($character->money) . ' / Bank ' . Config::formatNumber($character->bankmoney)  ?>
+								<?php if(Config::isLogged() && (Config::isAdmin(Config::getUser()) || $profile->id == Config::getUser())) { ?>
+						<tr>
+							<td><strong style="font-weight: 500;">Money</strong></td>
+							<td>
+								<?php echo Config::formatNumber($character->money) . ' / ' . Config::formatNumber($character->bankmoney)  ?>
 								<?php if(Config::isLogged(Config::getUser()) && Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-link active" data-toggle="modal" data-target="#moneym">Modify</button>'; ?>
 							</td>
-                                </tr>
-		
-                            </form>
-                        </tbody>
-                    </table>
-                </div>
+						</tr>
+						<tr>
+							<td><strong style="font-weight: 500;">Premium Points</strong></td>
+							<td>
+								<?php echo Config::getData("accounts","credits",$profile->id) ?>
+								<?php if(Config::isLogged(Config::getUser()) && Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-link active" data-toggle="modal" data-target="#premiumed">Modify</button>'; ?>
+							</td>
+						</tr>
+						<tr>
+							<td><strong style="font-weight: 500;">Email</strong></td>
+							<td>
+								<?php echo $purifier->purify(Config::xss(Config::clean(Config::getData("accounts","email",$profile->id)))) ?>
+								<button type="button" class="btn btn-link active" data-toggle="modal" data-target="#small-modals">Modify</button>
+							</td>
+						</tr>
+					<?php } ?>
+					<tr><td><strong style="font-weight: 500;">Last login</strong></td><td><?php echo Config::timeAgo(Config::getData("characters","lastlogin",$character->id)) ?></td></tr>
+					<tr>
+						<td><strong style="font-weight: 500;">Warnings</strong></td>
+						<td>
+							<?php echo Config::getData("accounts","punishpoints",$profile->id) ?>/3
+							<?php if(Config::isLogged(Config::getUser()) && Config::isAdmin(Config::getUser())) echo '<button type="button" class="btn btn-link active" value="Warnings" data-toggle="modal" data-target="#givewarn">Manage</button> <button type="submit" class="btn btn-link active" name="submit_action" value="Warnings">Reset</button>'; ?>
+						</td>
+					</tr>
+				</form></tbody>
+			</table>
+		</div>
 
                 <!-- Properties Tab -->
                 <div class="tab-pane fade" id="properties_<?php echo $character->charactername; ?>" role="tabpanel">
@@ -1076,7 +1120,7 @@ $aresuspend = $k->rowCount();
 		</div>
 		<?php } ?>
 	</div>
-</div><!--
+</div>
 <?php if(Config::isAdmin(Config::getUser())) { ?>
 <div id="fulllogs" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
 	<div class="modal-dialog modal-large" role="document">
@@ -1126,7 +1170,7 @@ $aresuspend = $k->rowCount();
 			</div>
 		</div>
 	</div>
-</div>-->
+</div>
 
 <?php } ?>
 <script src="<?php echo Config::$_PAGE_URL; ?>assets/vendor/jquery/jquery.min.js"></script>

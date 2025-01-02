@@ -933,7 +933,8 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
                         }
                         ?>
                     </div>
-                </div>
+               </div>
+
 
                 <!-- Vehicles Tab -->
                 <div class="tab-pane fade" id="vehicles_<?php echo $character->charactername; ?>" role="tabpanel">
@@ -1182,33 +1183,6 @@ $(function()
 	$('[data-toggle="popover"]').popover();
 });
 </script>
-
-
-<?php
-    // Controleer of er characters zijn
-    if ($c->rowCount()) {
-        $characters = $c->fetchAll(PDO::FETCH_OBJ); // Haal alle characters op
-        echo '<div class="tabs">';
-        echo '<ul class="tab-list">';
-        foreach ($characters as $index => $char) {
-            $active = $index === 0 ? 'active' : '';
-            echo "<li class='tab $active' data-tab='tab-$index'>{$char->charactername}</li>";
-        }
-        echo '</ul>';
-        echo '<div class="tab-content">';
-        foreach ($characters as $index => $char) {
-            $active = $index === 0 ? 'active' : '';
-            echo "<div id='tab-$index' class='tab-pane $active'>";
-            echo "<h2>Character: {$char->charactername}</h2>";
-            echo "<p>Details for {$char->charactername} will be displayed here.</p>";
-            echo '</div>';
-        }
-        echo '</div>';
-        echo '</div>';
-    } else {
-        echo "<p>No characters found for this account.</p>";
-    }
-?>
 
 <style>
 .tabs {

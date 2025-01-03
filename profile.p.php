@@ -205,6 +205,20 @@ if(Config::isAdmin(Config::getUser())) {
 
 	}
 }
+if(Config::isLogged(Config::getUser()) && (Config::isAdmin(Config::getUser()) || $profile->id == Config::getUser())) 
+	if(isset($_POST['avatar_submit']))
+	{
+	{
+		$notif = 'Your avatar has been updated by Admin '.Config::getName(Config::getUser(),false).'.';
+		$link = Config::$_PAGE_URL.'profile/' . $profile->username;
+		Config::makeNotification($profile->id,$profile->username,$notif,Config::getUser(),Config::getData("accounts","username",Config::getUser()),$link);
+		$w = Config::$g_con->prepare('UPDATE `accounts` SET `avatar` = ? WHERE `id` = ?');
+		$w->execute(array($_POST['avatar'],$profile->id));
+		$profile->credits = $_POST['avatar'];
+		echo Config::csSN("success","Your Avatar has been updated with success!");
+
+	}
+}
 $config = HTMLPurifier_Config::createDefault();
 $purifier = new HTMLPurifier($config);
 if(Config::isLogged(Config::getUser()) && (Config::isAdmin(Config::getUser()) || $profile->id == Config::getUser())) { 
@@ -363,6 +377,24 @@ if(Config::isLogged(Config::getUser()) && (Config::isAdmin(Config::getUser()) ||
 					<small><i class="fa fa-info-circle"></i> User will receive a notifications after the changes!</small>
 					<br><br>
 					<button type="submit" name="ppr_submit" class="btn btn-warning btn-block"><i class="fa fa-legal"></i> Update</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+<div id="changeavatar" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+	<div class="modal-dialog modal-sm" role="document">
+		<div class="modal-content">
+			<div class="modal-body">
+				<p>Change your avatar</p>
+				<form method="post" action="#">
+					<div class="input-group">
+						<span class="input-group-addon"><i class="fa fa-pencil"></i></span>
+						<input class="form-control" placeholder="<?php echo $profile->avatar ?>" type="text" name="avatar" required>
+					</div>
+					<small><i class="fa fa-info-circle"></i> Avatar URL! Make sure it ends with .jpg or .png</small>
+					<br><br>
+					<button type="submit" name="avatar_submit" class="btn btn-primary btn-block"><i class="fa fa-check-circle"></i> Change Avatar</button>
 				</form>
 			</div>
 		</div>
@@ -550,35 +582,35 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 <meta http-equiv = "refresh" content = "1" />
 <?php } } } ?>
 
-<?php if(isset($_POST['adm'])) {
-	
-if(Config::isAdmin($profile->id) && Config::getData("accounts","admin",$profile->id) > Config::getData("accounts","admin",Config::getUser())) {
-Config::gotoPage('profile/'.$profile->username.'',0,'danger','You are not allowed to punish higher admins!');	
-} else { 	
-	
-$areason = htmlspecialchars($_POST['areason']);
-$atime = htmlspecialchars($_POST['atime']);	
+<?php
+if (isset($_POST['serial_submit'])) {
+    $inputSerial = trim($_POST['whitelistserial'] ?? '');
 
-if(!$_POST['areason'] || !$_POST['atime']) {	
-echo '<div class="alert alert-danger alert-dismissible" role="alert">
-				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-					<span aria-hidden="true">×</span>
-				</button><i class="fa fa-info-circle"></i> You left fields blank (reason & time).
-			</div>';		
-} else { 		
-$que = Config::$g_con->prepare('INSERT INTO `panel_sanctions` (`UserName`,`UserID`,`AdminName`,`AdminID`,`Type`,`Time`,`Reason`,`Date`) VALUES (?,?,?,?,?,?,?,?)');
-$que->execute(array($profile->username, $profile->id,Config::getData("accounts","username",Config::getUser()),Config::getData("accounts","id",Config::getUser()), 5, $atime, $areason, date('d/m/Y H:i', $time)));
+    if (empty($inputSerial)) {
+        echo Config::csSN("danger", "Please enter a valid serial.");
+        return;
+    }
 
-$sanctions = Config::$g_con->prepare('INSERT INTO `sanctions` (`Time`,`Player`,`By`,`Userid`,`Type`,`Reason`) VALUES (?,?,?,?,?,?)');
-$sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::getData("accounts","username",Config::getUser()), $profile->id, 0, $areason));
+    try {
+        // Insert Serial Directly
+        $query = Config::$g_con->prepare('INSERT INTO `serial_whitelist` (`userid`, `serial`, `status`) VALUES (?, ?, ?)');
+        $query->execute([$profile->id, $inputSerial, 1]);
+
+        echo Config::csSN("success", "Serial has been successfully whitelisted!");
+    } catch (PDOException $e) {
+        echo Config::csSN("danger", "Failed to whitelist the serial: " . $e->getMessage());
+    }
+}
+
+
 ?>
-<div class="alert alert-success alert-dismissible" role="alert">
-				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-					<span aria-hidden="true">×</span>
-				</button><i class="fa fa-info-circle"></i> The player was successfully sanctioned.
-			</div>
-<meta http-equiv = "refresh" content = "1" />
-<?php } } } ?>
+
+
+
+
+
+
+
 
 <?php if(isset($_POST['amute'])) {
 	
@@ -629,18 +661,55 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 							<br>
 							<button class="btn btn-danger btn-block" name="awarn" type="submit">Warn</button>
 							<br>
-							<button class="btn btn-primary btn-block" name="amute" type="submit">Mute</button>
+							<!--<button class="btn btn-primary btn-block" name="amute" type="submit">Mute</button>
 							<br>
 							<button class="btn btn-primary btn-block" name="ajail" type="submit">Jail</button>
 							<br>
-							<button class="btn btn-primary btn-block" name="adm" type="submit">DM</button>
-							<br>
+							<button class="btn btn-primary btn-block" name="whitelist" type="submit">MTA Serial Whitelist</button>
+							<br>-->
 					</form>
 			</div>
 		</div>
 	</div>
 </div>
 <?php } ?>
+
+<div id="whitelist" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <p>Enter the serial carefully!</p>
+                <form method="post" action="#">
+                    <div class="input-group">
+                        <span class="input-group-addon"><i class="fa fa-pencil"></i></span>
+                        <input 
+                            class="form-control" 
+                            placeholder="Enter MTA Serial (F8 Console -> serial)" 
+                            type="text" 
+                            name="whitelistserial" 
+                            required>
+                    </div>
+                    <small><i class="fa fa-info-circle"></i> You will receive a notification after the changes!</small>
+                    <br><br>
+                    <button 
+                        type="submit" 
+                        name="serial_submit" 
+                        class="btn btn-primary btn-block">
+                        <i class="fa fa-check-circle"></i> WHITELIST
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+
 
 <?php if(Config::getData("accounts","admin",Config::getUser()) > 0) { ?>
 <div id="suspendeaza" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
@@ -740,9 +809,32 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 			<hr><a href="<?php echo ''.Config::$_PAGE_URL . 'complaints/create/' . $profile->username ?>"><button type="button" class="btn btn-danger" title="Create"><i class="ti-pencil"></i>Report Player</button></a>
 			<?php } ?></br></br>
 			<?php if(Config::isLogged(Config::getUser()) && Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-danger" title="Create" data-toggle="modal" data-target="#sanctioneaza"><i class="ti-pencil"></i>Admin Actions</button></a>'; ?>
+			</br></br>
+			<?php if(Config::isLogged(Config::getUser()) or Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-warning" title="Avatar" data-toggle="modal" data-target="#changeavatar"><i class="ti-pencil"></i>Change Avatar</button></a>'; ?>
+			</br></br>
+			<!--<?php if (Config::getData("accounts", "admin", Config::getUser()) > 1 || Config::getUser() == $profile->id) { ?>
+    <button 
+        type="button" 
+        class="btn btn-warning" 
+        title="Whitelist Serial" 
+        data-toggle="modal" 
+        data-target="#whitelist">
+        <i class="ti-pencil"></i> Whitelist Serial
+    </button>-->
+<?php } ?>
+<?php if(Config::isLogged() && (Config::isAdmin(Config::getUser()) || $profile->id == Config::getUser())) { ?>
+<button 
+        type="button" 
+        class="btn btn-warning" 
+        title="Whitelist Serial" 
+        data-toggle="modal" 
+        data-target="#whitelist">
+        <i class="ti-pencil"></i> Whitelist Serial
+    </button>
 			</center>
 		</div>
 	</div>
+	<?php } ?>
 	<?php
 	if(Config::isLogged() && Config::getData("accounts","admin",Config::getUser())) {
 		if(isset($_POST['delete_tag'])) {

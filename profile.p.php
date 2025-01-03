@@ -747,26 +747,8 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 			</br></br>
 			<?php if(Config::isLogged(Config::getUser()) or Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-warning" title="Avatar" data-toggle="modal" data-target="#changeavatar"><i class="ti-pencil"></i>Change Avatar</button></a>'; ?>
 			</br></br>
-			<!--<?php if (Config::getData("accounts", "admin", Config::getUser()) > 1 || Config::getUser() == $profile->id) { ?>
-    <button 
-        type="button" 
-        class="btn btn-warning" 
-        title="Whitelist Serial" 
-        data-toggle="modal" 
-        data-target="#whitelist">
-        <i class="ti-pencil"></i> Whitelist Serial
-    </button>-->
-<?php } ?>
-<?php if (Config::getData("accounts", "admin", Config::getUser()) > 1 || Config::getUser() == $profile->id) { ?>
-    <button 
-        type="button" 
-        class="btn btn-warning" 
-        data-toggle="modal" 
-        data-target="#whitelist">
-        <i class="fa fa-pencil"></i> Whitelist Serial
-    </button>
-	</div></div>
-<?php } ?>
+			<?php if(Config::isLogged(Config::getUser()) or Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-warning" title="Serial" data-toggle="modal" data-target="#addserial"><i class="ti-pencil"></i>Add Serial</button></a>'; ?>
+</div></div>
 	<?php
 	if(Config::isLogged() && Config::getData("accounts","admin",Config::getUser())) {
 		if(isset($_POST['delete_tag'])) {

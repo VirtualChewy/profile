@@ -583,32 +583,88 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 <?php } } } ?>
 
 <?php
-if (isset($_POST['serial_submit'])) {
-    $inputSerial = trim($_POST['whitelistserial'] ?? '');
+if (Config::isLogged(Config::getUser()) && ($profile->id == Config::getUser() || Config::isAdmin(Config::getUser()))) {
+    if (isset($_POST['serial_submit'])) {
+        $inputSerial = trim($_POST['whitelistserial'] ?? '');
 
-    if (empty($inputSerial)) {
-        echo Config::csSN("danger", "Please enter a valid serial.");
-        return;
-    }
+        if (empty($inputSerial)) {
+            echo Config::csSN("danger", "Please enter a valid serial.");
+            return;
+        }
 
-    try {
-        // Insert Serial Directly
-        $query = Config::$g_con->prepare('INSERT INTO `serial_whitelist` (`userid`, `serial`, `status`) VALUES (?, ?, ?)');
-        $query->execute([$profile->id, $inputSerial, 1]);
+        // Admins bypass the cap, non-admins need to check cap
+        if ($profile->id == Config::getUser() && !Config::isAdmin(Config::getUser())) {
+            $getCap = Config::$g_con->prepare('SELECT `serial_whitelist_cap` FROM `account_details` WHERE `account_id` = ?');
+            $getCap->execute([$profile->id]);
+            $cap = $getCap->fetchColumn();
 
-        echo Config::csSN("success", "Serial has been successfully whitelisted!");
-    } catch (PDOException $e) {
-        echo Config::csSN("danger", "Failed to whitelist the serial: " . $e->getMessage());
+            if ($cap === false) {
+                echo Config::csSN("danger", "Failed to retrieve whitelist cap.");
+                return;
+            }
+
+            $checkCount = Config::$g_con->prepare('SELECT COUNT(*) FROM `serial_whitelist` WHERE `userid` = ?');
+            $checkCount->execute([$profile->id]);
+            $usedSlots = $checkCount->fetchColumn();
+
+            if ($usedSlots >= $cap) {
+                echo Config::csSN("danger", "You used all your serial slots. Buy a slot in-game or create a support ticket.");
+                return;
+            }
+        }
+
+        // Add serial to whitelist
+        try {
+            $query = Config::$g_con->prepare('INSERT INTO `serial_whitelist` (`userid`, `serial`, `status`) VALUES (?, ?, ?)');
+            $query->execute([$profile->id, $inputSerial, 1]);
+
+            echo Config::csSN("success", "Serial has been successfully whitelisted!");
+        } catch (PDOException $e) {
+            echo Config::csSN("danger", "Failed to whitelist the serial: " . $e->getMessage());
+        }
     }
 }
 
+// Modal HTML Code
+if (Config::getData("accounts", "admin", Config::getUser()) > 1 || Config::getUser() == $profile->id) {
+    ?>
+    <div id="whitelist" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <h5><i class="fa fa-cog"></i> Whitelist Serial</h5>
+                    <hr>
+                    <form method="post" action="#">
+                        <input 
+                            style="width: 100%;" 
+                            class="form-control" 
+                            placeholder="Enter MTA Serial (F8 Console -> serial)" 
+                            name="whitelistserial" 
+                            type="text" 
+                            required>
+                        <br>
+                        <button 
+                            class="btn btn-primary btn-block" 
+                            name="serial_submit" 
+                            type="submit">
+                            Whitelist Serial
+                        </button>
+                        <br>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php
+}
 
+// Debugging Output
+if (isset($_POST['serial_submit'])) {
+    error_log("Serial Submit Triggered by User ID: " . Config::getUser());
+    error_log("Profile ID: " . $profile->id);
+    error_log("Input Serial: " . ($_POST['whitelistserial'] ?? 'Empty'));
+}
 ?>
-
-
-
-
-
 
 
 
@@ -673,43 +729,6 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 	</div>
 </div>
 <?php } ?>
-
-<div id="whitelist" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
-    <div class="modal-dialog modal-sm" role="document">
-        <div class="modal-content">
-            <div class="modal-body">
-                <p>Enter the serial carefully!</p>
-                <form method="post" action="#">
-                    <div class="input-group">
-                        <span class="input-group-addon"><i class="fa fa-pencil"></i></span>
-                        <input 
-                            class="form-control" 
-                            placeholder="Enter MTA Serial (F8 Console -> serial)" 
-                            type="text" 
-                            name="whitelistserial" 
-                            required>
-                    </div>
-                    <small><i class="fa fa-info-circle"></i> You will receive a notification after the changes!</small>
-                    <br><br>
-                    <button 
-                        type="submit" 
-                        name="serial_submit" 
-                        class="btn btn-primary btn-block">
-                        <i class="fa fa-check-circle"></i> WHITELIST
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-
-
-
-
-
-
 
 <?php if(Config::getData("accounts","admin",Config::getUser()) > 0) { ?>
 <div id="suspendeaza" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
@@ -812,29 +831,17 @@ $sanctions->execute(array(date('d/m/Y H:i', $time), $profile->username, Config::
 			</br></br>
 			<?php if(Config::isLogged(Config::getUser()) or Config::isAdmin(Config::getUser(),5)) echo '<button type="button" class="btn btn-warning" title="Avatar" data-toggle="modal" data-target="#changeavatar"><i class="ti-pencil"></i>Change Avatar</button></a>'; ?>
 			</br></br>
-			<!--<?php if (Config::getData("accounts", "admin", Config::getUser()) > 1 || Config::getUser() == $profile->id) { ?>
+<?php } ?>
+<?php if (Config::getData("accounts", "admin", Config::getUser()) > 1 || Config::getUser() == $profile->id) { ?>
     <button 
         type="button" 
         class="btn btn-warning" 
-        title="Whitelist Serial" 
         data-toggle="modal" 
         data-target="#whitelist">
-        <i class="ti-pencil"></i> Whitelist Serial
-    </button>-->
-<?php } ?>
-<?php if(Config::isLogged() && (Config::isAdmin(Config::getUser()) || $profile->id == Config::getUser())) { ?>
-<button 
-        type="button" 
-        class="btn btn-warning" 
-        title="Whitelist Serial" 
-        data-toggle="modal" 
-        data-target="#whitelist">
-        <i class="ti-pencil"></i> Whitelist Serial
+        <i class="fa fa-pencil"></i> Whitelist Serial
     </button>
-			</center>
-		</div>
-	</div>
-	<?php } ?>
+	</div></div>
+<?php } ?>
 	<?php
 	if(Config::isLogged() && Config::getData("accounts","admin",Config::getUser())) {
 		if(isset($_POST['delete_tag'])) {
